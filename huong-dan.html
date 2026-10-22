@@ -1,0 +1,65 @@
+<title>Bot Hầm Bí Mật</title>
+<style>
+/* Layout: một cột hẹp, các bước đánh số vì đây là quy trình thật */
+:root { --bg:#f6f5f1; --fg:#24221d; --muted:#6b675d; --card:#ffffff; --line:#dcd8cc; --accent:#b8860b; --code:#efece3;
+  --body:"Be Vietnam Pro", system-ui, sans-serif; --mono: Consolas, ui-monospace, monospace; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#1b1a17; --fg:#ece8dd; --muted:#a29d90; --card:#25231f; --line:#3a372f; --accent:#e0b440; --code:#2f2c26; color-scheme:dark } }
+:root[data-theme="dark"] { --bg:#1b1a17; --fg:#ece8dd; --muted:#a29d90; --card:#25231f; --line:#3a372f; --accent:#e0b440; --code:#2f2c26; color-scheme:dark }
+body { background:var(--bg); color:var(--fg); font:15px/1.6 var(--body); padding:32px 16px; }
+main { max-width:720px; margin:0 auto; display:grid; gap:20px; }
+h1 { margin:0; font-size:26px; } h2 { margin:0 0 8px; font-size:17px; color:var(--accent); }
+section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px 20px; }
+ol, ul { margin:0; padding-left:20px; } li { margin:4px 0; }
+code { font-family:var(--mono); background:var(--code); padding:1px 6px; border-radius:4px; }
+table { border-collapse:collapse; width:100%; } td, th { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; }
+th { color:var(--muted); font-weight:600; font-size:13px; }
+.muted { color:var(--muted); font-size:13px; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600&display=swap">
+<main>
+  <h1>Bot Hầm Bí Mật (PUBG)</h1>
+
+  <section>
+    <h2>Cài đặt lần đầu</h2>
+    <ol>
+      <li>Mở <code>config.json</code>, thay <code>DAN_TOKEN_BOT_VAO_DAY</code> bằng token của bot (Developer Portal → tab Bot → Reset Token).</li>
+      <li>Mời bot vào server bằng link OAuth2, nhớ tích scope <code>bot</code> và <code>applications.commands</code>.</li>
+      <li>Nhấp đúp <code>chay-bot.bat</code>. Thấy dòng <code>Bot đã online</code> là xong.</li>
+    </ol>
+    <p class="muted">Đóng cửa sổ đen thì bot offline. Không gửi token cho ai.</p>
+  </section>
+
+  <section>
+    <h2>Cách dùng</h2>
+    <p>Gõ <code>/hambimat</code> trong Discord, rồi chọn map trong gợi ý hoặc gõ tên gần đúng. Bot gửi ảnh bản đồ hầm bí mật của map đó.</p>
+    <table>
+      <tr><th>Map</th><th>Gõ được</th></tr>
+      <tr><td>Erangel</td><td><code>erangel</code> <code>erage</code> <code>eran</code></td></tr>
+      <tr><td>Miramar</td><td><code>miramar</code> <code>mirama</code> <code>sa mạc</code></td></tr>
+      <tr><td>Taego</td><td><code>taego</code> <code>tego</code> <code>tae</code></td></tr>
+      <tr><td>Rondo</td><td><code>rondo</code> <code>rodo</code> <code>jadena</code></td></tr>
+      <tr><td>Vikendi</td><td><code>vikendi</code> <code>vikedi</code> <code>tuyết</code></td></tr>
+      <tr><td>Deston</td><td><code>deston</code> <code>ripton</code> (gửi 2 ảnh)</td></tr>
+      <tr><td>Paramo</td><td><code>paramo</code> <code>param</code> (hầm đổi ngẫu nhiên mỗi trận)</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Trận PUBG gần nhất</h2>
+    <p>Gõ <code>/gamegannhat ten:TaoFanRuler</code>. Bot gửi thống kê trận gần nhất (Steam): map, chế độ, giờ VN, đội, hạng, kill, knock, sát thương, thời gian sống, quãng đường, hồi máu, và danh sách kill (nạn nhân, súng, khoảng cách).</p>
+    <ul>
+      <li>Tên ingame phải đúng hoa/thường.</li>
+      <li>Chỉ có trận trong 14 ngày gần đây. Trận vừa xong có thể phải chờ vài phút mới có.</li>
+      <li>Cần file <code>api_BOT_Pubg.txt</code> chứa PUBG API key, đặt cạnh bot hoặc ở thư mục cha.</li>
+      <li>Mỗi phút chỉ hỏi được khoảng 10 lần.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Đổi hoặc thêm ảnh</h2>
+    <ul>
+      <li>Đổi ảnh: thay file trong thư mục <code>images</code> (giữ nguyên tên file), rồi chạy lại bot.</li>
+      <li>Thêm map: thêm một dòng vào danh sách <code>MAPS</code> trong <code>maps.js</code> và bỏ ảnh vào <code>images</code>.</li>
+    </ul>
+  </section>
+</main>

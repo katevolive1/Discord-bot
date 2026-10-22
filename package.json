@@ -1,0 +1,12 @@
+{
+  "name": "discord-bot-ham-bi-mat",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "14.11.0"
+  }
+}
