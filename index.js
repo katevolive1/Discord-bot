@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, SlashCommandBuilder, AttachmentBuilder, Embed
 const { token } = require('./config.json');
 const { MAPS, findMaps } = require('./maps');
 const { lastGame, PubgError } = require('./pubg');
+const VAR_LINES = require('./var-cau');
 
 // Lệnh chấm điểm vui: tag một người, bot đưa ra % ngẫu nhiên 0-100.
 // ownerScore là điểm cố định khi tag chủ bot.
@@ -43,10 +44,46 @@ const commands = [
       opt.setName('ten')
         .setDescription('Tên ingame, đúng hoa/thường')
         .setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('start')
+    .setDescription('Bật lại bot sau khi tạm dừng (chỉ chủ bot)'),
+  new SlashCommandBuilder()
+    .setName('stop')
+    .setDescription('Tạm dừng bot, không phản hồi gì nữa (chỉ chủ bot)'),
+  new SlashCommandBuilder()
+    .setName('var')
+    .setDescription('Bot var 10 câu vào một người')
+    .addUserOption(opt =>
+      opt.setName('nguoi')
+        .setDescription('Tag người cần var')
+        .setRequired(true)),
 ];
+
+// Xáo kho câu var rồi lấy lần lượt, dùng hết kho mới xáo lại nên ít khi lặp
+let varDeck = [];
+function nextVarLines(n) {
+  const picked = [];
+  while (picked.length < n) {
+    if (!varDeck.length) varDeck = shuffle(VAR_LINES.filter(l => !picked.includes(l)));
+    picked.push(varDeck.pop());
+  }
+  return picked;
+}
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildModeration] });
 let ownerId = null;
+// /stop bật cờ này: bot vẫn online nhưng bỏ qua mọi lệnh và sự kiện. Khởi động lại bot thì về hoạt động.
+let paused = false;
+// Mỗi lần /stop tăng số này. Lệnh đang chạy dở so với số lúc bắt đầu, khác thì dừng ngay.
+let stopCount = 0;
 
 // Đăng ký lệnh riêng cho từng server để lệnh hiện ngay, không phải chờ
 async function registerCommand(guild) {
@@ -72,7 +109,7 @@ client.on('guildCreate', registerCommand);
 // Nhật ký chỉ ghi khi xóa tin của người khác, tự xóa tin mình thì không có.
 const WATCH_DELETER_ID = '1174424714505093185';
 client.on('guildAuditLogEntryCreate', entry => {
-  if (entry.action !== AuditLogEvent.MessageDelete || entry.executorId !== WATCH_DELETER_ID) return;
+  if (paused || entry.action !== AuditLogEvent.MessageDelete || entry.executorId !== WATCH_DELETER_ID) return;
   const channel = entry.extra?.channel;
   if (!channel?.isTextBased?.()) return;
   // Hiện tên người bị xóa nhưng không ping họ; xóa tin của chủ bot thì gọi là "Đại ca của tao"
@@ -86,6 +123,23 @@ client.on('interactionCreate', interaction => {
 });
 
 async function handleInteraction(interaction) {
+  if (interaction.isChatInputCommand() && ['start', 'stop'].includes(interaction.commandName)) {
+    if (interaction.user.id !== ownerId) {
+      await interaction.reply({ content: 'Chỉ chủ bot dùng được lệnh này.', ephemeral: true });
+      return;
+    }
+    paused = interaction.commandName === 'stop';
+    if (paused) stopCount++;
+    await interaction.reply({ content: paused ? 'Bot đã tạm dừng. Gõ /start để bật lại.' : 'Bot đã hoạt động lại.', ephemeral: true });
+    return;
+  }
+  if (paused) {
+    // Vẫn phải trả lời, không thì Discord báo "Ứng dụng không phản hồi"
+    if (interaction.isAutocomplete()) await interaction.respond([]);
+    else if (interaction.isRepliable()) await interaction.reply({ content: 'Bot đang tạm nghỉ.', ephemeral: true });
+    return;
+  }
+
   if (interaction.isAutocomplete() && interaction.commandName === 'hambimat') {
     const typed = interaction.options.getFocused();
     let list = findMaps(typed);
@@ -102,6 +156,29 @@ async function handleInteraction(interaction) {
     return;
   }
 
+  if (interaction.isChatInputCommand() && interaction.commandName === 'var') {
+    const user = interaction.options.getUser('nguoi');
+    if (user.id === ownerId) {
+      await interaction.reply('Đại ca tao sao tao var được');
+      return;
+    }
+    // Hiện tên nhưng không ping; mỗi câu một tin, cách nhau 1,5 giây, /stop cắt ngang được
+    const t = `<@${user.id}>`;
+    const noPing = { allowedMentions: { parse: [] } };
+    const run = stopCount;
+    await interaction.reply({ content: `🤬 BotChat var ${t}, trẻ em tránh xa:`, ...noPing });
+    const lines = nextVarLines(10);
+    for (let i = 0; i < lines.length; i++) {
+      await sleep(1500);
+      if (run !== stopCount) return;
+      await interaction.followUp({ content: `${i + 1}. ${lines[i].replaceAll('{t}', t)}`, ...noPing });
+    }
+    await sleep(1500);
+    if (run !== stopCount) return;
+    await interaction.followUp({ content: `🤬 Hết var. ${t} cay thì /var lại đi, nếu cái não còn chạy nổi.`, ...noPing });
+    return;
+  }
+
   if (interaction.isChatInputCommand() && interaction.commandName === 'clear') {
     const want = interaction.options.getInteger('so_luong') ?? 10;
     await interaction.deferReply({ ephemeral: true });
@@ -111,17 +188,23 @@ async function handleInteraction(interaction) {
     const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000 + 60 * 1000;
     let deleted = 0;
     let before;
+    const run = stopCount;
+    const stopped = () => run !== stopCount;
     try {
       // Lật lịch sử kênh từng trang 100 tin, chỉ lấy tin do bot gửi
-      while (deleted < want) {
+      while (deleted < want && !stopped()) {
         const page = await channel.messages.fetch({ limit: 100, before });
         if (page.size === 0) break;
         before = page.last().id;
         const mine = [...page.values()].filter(m => m.author.id === client.user.id).slice(0, want - deleted);
         const bulk = canBulk ? mine.filter(m => m.createdTimestamp > cutoff) : [];
         if (bulk.length) await channel.bulkDelete(bulk);
-        for (const m of mine.filter(m => !bulk.includes(m))) await m.delete();
-        deleted += mine.length;
+        deleted += bulk.length;
+        for (const m of mine.filter(m => !bulk.includes(m))) {
+          if (stopped()) break;
+          await m.delete();
+          deleted++;
+        }
       }
     } catch (err) {
       if (err.code !== 50013 && err.code !== 50001) throw err;
@@ -129,7 +212,8 @@ async function handleInteraction(interaction) {
       return;
     }
     let msg = `Đã xóa ${deleted} tin nhắn của bot.`;
-    if (deleted < want) msg += ' Trong kênh không còn tin nào khác của bot.';
+    if (stopped()) msg = `Đã dừng theo /stop, xóa được ${deleted} tin.`;
+    else if (deleted < want) msg += ' Trong kênh không còn tin nào khác của bot.';
     await interaction.editReply(msg);
     return;
   }
@@ -137,9 +221,14 @@ async function handleInteraction(interaction) {
   if (interaction.isChatInputCommand() && interaction.commandName === 'gamegannhat') {
     // Tải trận + telemetry mất vài giây, báo "đang xử lý" trước
     await interaction.deferReply();
+    const run = stopCount;
     try {
-      await interaction.editReply({ embeds: [await lastGame(interaction.options.getString('ten').trim())] });
+      const embed = await lastGame(interaction.options.getString('ten').trim());
+      // Bị /stop trong lúc tải thì xóa tin "đang suy nghĩ", không gửi kết quả
+      if (run !== stopCount) return await interaction.deleteReply();
+      await interaction.editReply({ embeds: [embed] });
     } catch (err) {
+      if (run !== stopCount) return await interaction.deleteReply();
       if (!(err instanceof PubgError)) console.error('Lỗi /gamegannhat:', err);
       await interaction.editReply(err instanceof PubgError ? err.message : 'Lỗi khi lấy dữ liệu PUBG, thử lại sau.');
     }
@@ -158,6 +247,7 @@ async function handleInteraction(interaction) {
     }
     // Báo "đang xử lý" ngay, vì gửi ảnh có thể lâu hơn hạn 3 giây của Discord
     await interaction.deferReply();
+    if (paused) return await interaction.deleteReply();
     const files = map.files.map(f => new AttachmentBuilder(path.join(__dirname, 'images', f), { name: f }));
     const embeds = map.files.map((f, i) => {
       const embed = new EmbedBuilder().setImage(`attachment://${f}`).setColor(0xf5c518);
