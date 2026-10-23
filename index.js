@@ -127,7 +127,13 @@ client.on('guildAuditLogEntryCreate', entry => {
 });
 
 client.on('interactionCreate', interaction => {
-  handleInteraction(interaction).catch(err => console.error('Lỗi xử lý lệnh:', err));
+  handleInteraction(interaction).catch(err => {
+    // Bot thiếu quyền (50013) hoặc không vào được kênh (50001) thì báo người gõ, lỗi khác chỉ ghi ra console
+    if (err.code !== 50013 && err.code !== 50001) return console.error('Lỗi xử lý lệnh:', err);
+    if (!interaction.isRepliable()) return;
+    const msg = { content: 'Bot không có quyền.', ephemeral: true };
+    (interaction.deferred || interaction.replied ? interaction.followUp(msg) : interaction.reply(msg)).catch(() => {});
+  });
 });
 
 async function handleInteraction(interaction) {
@@ -223,7 +229,7 @@ async function handleInteraction(interaction) {
       }
     } catch (err) {
       if (err.code !== 50013 && err.code !== 50001) throw err;
-      await interaction.editReply(`Bot thiếu quyền ở kênh này (cần Xem Lịch Sử Tin Nhắn). Đã xóa được ${deleted} tin.`);
+      await interaction.editReply('Bot không có quyền.');
       return;
     }
     let msg = `Đã xóa ${deleted} tin nhắn của bot.`;
