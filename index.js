@@ -170,17 +170,20 @@ async function handleInteraction(interaction) {
       await interaction.reply('Đại ca tao sao tao var được');
       return;
     }
-    // Hiện tên nhưng không ping; mỗi câu một tin, cách nhau 1,5 giây, /stop hoặc /stopvar cắt ngang được
-    const t = `<@${user.id}>`;
+    // Ghi tên dạng chữ thường (tên trong server), không dùng @
+    const t = interaction.options.getMember('nguoi')?.displayName ?? user.globalName ?? user.username;
     const noPing = { allowedMentions: { parse: [] } };
     const run = stopCount;
     const varRun = varStopCount;
-    await interaction.reply({ content: `🤬 BotChat var ${t}, trẻ em tránh xa:`, ...noPing });
-    const lines = nextVarLines(10);
+    // Lệnh bắt buộc phải được trả lời: trả lời ẩn rồi xóa luôn, để 10 câu là tin thường trong kênh chứ không dính vào lệnh
+    await interaction.deferReply({ ephemeral: true });
+    await interaction.deleteReply().catch(() => {});
+    // Mỗi câu một tin, cách nhau 1,5 giây, /stop hoặc /stopvar cắt ngang được
+    const lines = nextVarLines(5);
     for (let i = 0; i < lines.length; i++) {
-      await sleep(1500);
+      if (i > 0) await sleep(700);
       if (run !== stopCount || varRun !== varStopCount) return;
-      await interaction.followUp({ content: `${i + 1}. ${lines[i].replaceAll('{t}', t)}`, ...noPing });
+      await interaction.channel.send({ content: `${i + 1}. ${lines[i].replaceAll('{t}', t)}`, ...noPing });
     }
     return;
   }
