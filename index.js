@@ -12,13 +12,16 @@ const RATINGS = {
   gay: { label: 'gay', ownerScore: 0 },
 };
 
+// Discord xóa mọi ký tự vô hình nên không để mô tả trống được; dùng dấu chấm giữa cho gần như trống
+const BLANK_DESC = '·';
+
 const commands = [
   new SlashCommandBuilder()
     .setName('hambimat')
     .setDescription('Xem vị trí hầm bí mật của một map')
     .addStringOption(opt =>
       opt.setName('map')
-        .setDescription('Tên map (gõ gần đúng cũng được)')
+        .setDescription('Tên map')
         .setRequired(true)
         .setAutocomplete(true)),
   ...Object.entries(RATINGS).map(([name, r]) =>
@@ -46,16 +49,16 @@ const commands = [
         .setRequired(true)),
   new SlashCommandBuilder()
     .setName('start')
-    .setDescription('Bật lại bot sau khi tạm dừng (chỉ chủ bot)'),
+    .setDescription(BLANK_DESC),//Bật lại bot sau khi tạm dừng (chỉ chủ bot)
   new SlashCommandBuilder()
     .setName('stop')
-    .setDescription('Tạm dừng bot, không phản hồi gì nữa (chỉ chủ bot)'),
+      .setDescription(BLANK_DESC),//Tạm dừng bot, không phản hồi gì nữa (chỉ chủ bot)
   new SlashCommandBuilder()
     .setName('var')
-    .setDescription('Bot var 10 câu vào một người')
+      .setDescription(BLANK_DESC)//Bot var 10 câu vào một người
     .addUserOption(opt =>
       opt.setName('nguoi')
-        .setDescription('Tag người cần var')
+        .setDescription(BLANK_DESC)//Tag người cần var
         .setRequired(true)),
 ];
 
