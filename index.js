@@ -181,15 +181,14 @@ async function handleInteraction(interaction) {
     const noPing = { allowedMentions: { parse: [] } };
     const run = stopCount;
     const varRun = varStopCount;
-    // Lệnh bắt buộc phải được trả lời: trả lời ẩn rồi xóa luôn, để 10 câu là tin thường trong kênh chứ không dính vào lệnh
-    await interaction.deferReply({ ephemeral: true });
-    await interaction.deleteReply().catch(() => {});
-    // Mỗi câu một tin, cách nhau 1,5 giây, /stop hoặc /stopvar cắt ngang được
+    // Câu 1 là tin trả lời lệnh (hiện "… đã sử dụng /var" như các lệnh khác), các câu sau là tin thường trong kênh.
+    // Mỗi câu một tin, cách nhau 0,5 giây, /stop hoặc /stopvar cắt ngang được
     const lines = nextVarLines(5);
     for (let i = 0; i < lines.length; i++) {
-      if (i > 0) await sleep(700);
+      if (i > 0) await sleep(500);
       if (run !== stopCount || varRun !== varStopCount) return;
-      await interaction.channel.send({ content: `${i + 1}. ${lines[i].replaceAll('{t}', t)}`, ...noPing });
+      const msg = { content: `${i + 1}. ${lines[i].replaceAll('{t}', t)}`, ...noPing };
+      await (i === 0 ? interaction.reply(msg) : interaction.channel.send(msg));
     }
     return;
   }
