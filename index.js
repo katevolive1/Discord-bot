@@ -60,6 +60,9 @@ const commands = [
       opt.setName('nguoi')
         .setDescription(BLANK_DESC)//Tag người cần var
         .setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('stopvar')
+    .setDescription(BLANK_DESC),//Dừng các lượt var đang chạy (ai cũng dùng được)
 ];
 
 // Xáo kho câu var rồi lấy lần lượt, dùng hết kho mới xáo lại nên ít khi lặp
@@ -87,6 +90,8 @@ let ownerId = null;
 let paused = false;
 // Mỗi lần /stop tăng số này. Lệnh đang chạy dở so với số lúc bắt đầu, khác thì dừng ngay.
 let stopCount = 0;
+// Giống stopCount nhưng chỉ dừng /var, do /stopvar tăng
+let varStopCount = 0;
 
 // Đăng ký lệnh riêng cho từng server để lệnh hiện ngay, không phải chờ
 async function registerCommand(guild) {
@@ -115,7 +120,7 @@ client.on('guildAuditLogEntryCreate', entry => {
   if (paused || entry.action !== AuditLogEvent.MessageDelete || entry.executorId !== WATCH_DELETER_ID) return;
   const channel = entry.extra?.channel;
   if (!channel?.isTextBased?.()) return;
-  // Hiện tên người bị xóa nhưng không ping họ; xóa tin của chủ bot thì gọi là "Đại ca của tao"
+  // Hiện tên người bị xóa nhưng không ping họ; xóa tin của chủ bot thì gọi là "Đại ca tao"
   const victim = entry.targetId === ownerId ? 'Đại ca tao' : `<@${entry.targetId}>`;
   channel.send({ content: `Chó Quang chan vừa xóa tin nhắn của ${victim}`, allowedMentions: { parse: [] } })
     .catch(err => console.error('Không gửi được thông báo xóa tin:', err.message));
@@ -165,20 +170,24 @@ async function handleInteraction(interaction) {
       await interaction.reply('Đại ca tao sao tao var được');
       return;
     }
-    // Hiện tên nhưng không ping; mỗi câu một tin, cách nhau 1,5 giây, /stop cắt ngang được
+    // Hiện tên nhưng không ping; mỗi câu một tin, cách nhau 1,5 giây, /stop hoặc /stopvar cắt ngang được
     const t = `<@${user.id}>`;
     const noPing = { allowedMentions: { parse: [] } };
     const run = stopCount;
+    const varRun = varStopCount;
     await interaction.reply({ content: `🤬 BotChat var ${t}, trẻ em tránh xa:`, ...noPing });
     const lines = nextVarLines(10);
     for (let i = 0; i < lines.length; i++) {
       await sleep(1500);
-      if (run !== stopCount) return;
+      if (run !== stopCount || varRun !== varStopCount) return;
       await interaction.followUp({ content: `${i + 1}. ${lines[i].replaceAll('{t}', t)}`, ...noPing });
     }
-    await sleep(1500);
-    if (run !== stopCount) return;
-    await interaction.followUp({ content: `🤬 Hết var. ${t} cay thì /var lại đi, nếu cái não còn chạy nổi.`, ...noPing });
+    return;
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'stopvar') {
+    varStopCount++;
+    await interaction.reply({ content: 'Đã dừng.', ephemeral: true });
     return;
   }
 
